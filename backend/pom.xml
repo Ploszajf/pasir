@@ -29,6 +29,9 @@
     <properties>
         <java.version>25</java.version>
     </properties>
+    <properties>
+        <sonar.organization>ploszajf</sonar.organization>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
