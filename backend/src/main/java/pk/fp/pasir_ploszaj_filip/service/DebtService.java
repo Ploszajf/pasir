@@ -21,18 +21,21 @@ public class DebtService {
     private final MembershipService membershipService;
     private final MembershipRepository membershipRepository;
     private final CurrentUserService currentUserService;
+    private final NotificationService notificationService;
 
     public DebtService(
             DebtRepository debtRepository,
             GroupRepository groupRepository,
             MembershipRepository membershipRepository,
             MembershipService membershipService,
-            CurrentUserService currentUserService) {
+            CurrentUserService currentUserService,
+            NotificationService notificationService) {
         this.debtRepository = debtRepository;
         this.groupRepository = groupRepository;
         this.membershipRepository = membershipRepository;
         this.membershipService = membershipService;
         this.currentUserService = currentUserService;
+        this.notificationService = notificationService;
     }
 
     public List<Debt> getGroupDebts(Long groupId) {
@@ -45,12 +48,10 @@ public class DebtService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nie można utworzyć długu. Grupa o ID " + debtDTO.getGroupId() + " nie istnieje."));
 
-        // POPRAWKA: Szukamy członkostwa łącząc ID grupy i ID użytkownika (dłużnika)
         Membership debtorMembership = membershipRepository.findByGroupIdAndUserId(group.getId(), debtDTO.getDebtorId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Użytkownik o ID " + debtDTO.getDebtorId() + " nie jest członkiem grupy o ID " + group.getId()));
 
-        // POPRAWKA: Szukamy członkostwa łącząc ID grupy i ID użytkownika (wierzyciela)
         Membership creditorMembership = membershipRepository.findByGroupIdAndUserId(group.getId(), debtDTO.getCreditorId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Użytkownik o ID " + debtDTO.getCreditorId() + " nie jest członkiem grupy o ID " + group.getId()));
@@ -77,7 +78,12 @@ public class DebtService {
         debt.setCreditor(creditor);
         debt.setAmount(debtDTO.getAmount());
         debt.setTitle(debtDTO.getTitle());
-        return debtRepository.save(debt);
+
+        Debt savedDebt = debtRepository.save(debt);
+
+        notificationService.triggerExpenseNotification(savedDebt, currentUser);
+
+        return savedDebt;
     }
 
     public void deleteDebt (Long debtId) {
